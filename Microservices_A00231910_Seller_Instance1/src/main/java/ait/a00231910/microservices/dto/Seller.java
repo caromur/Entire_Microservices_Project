@@ -1,10 +1,14 @@
 package ait.a00231910.microservices.dto;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
+import javax.persistence.Transient;
 
 @Entity
 public class Seller {
@@ -18,17 +22,21 @@ public class Seller {
 	private String email;
 	private String number;
 	
+	@Transient
+	private List<Product> products;
+	
 	public Seller()
 	{
 		
 	}
 	
-	public Seller(Long id, String name, String email, String number) {
+	public Seller(Long id, String name, String email, String number, List<Product> products) {
 		super();
 		this.id = id;
 		this.name = name;
 		this.email = email;
 		this.number = number;
+		this.products = products;
 	}
 
 	public Long getId() {
@@ -63,9 +71,18 @@ public class Seller {
 		this.number = number;
 	}
 
+	public List<Product> getProducts() {
+		return products;
+	}
+
+	public void setProducts(List<Product> products) {
+		this.products = products;
+	}
+
 	@Override
 	public String toString() {
-		return "Seller [id=" + id + ", name=" + name + ", email=" + email + ", number=" + number + "]";
+		return "Seller [id=" + id + ", name=" + name + ", email=" + email + ", number=" + number + ", products="
+				+ products + "]";
 	}
 
 }

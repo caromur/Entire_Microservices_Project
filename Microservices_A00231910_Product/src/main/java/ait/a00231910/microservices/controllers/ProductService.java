@@ -1,5 +1,7 @@
 package ait.a00231910.microservices.controllers;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -49,6 +51,23 @@ public class ProductService {
 	@GetMapping("/products")
 	Iterable<Product> getAllProducts() {
 		return productRepo.findAll();
+	}
+	
+	@GetMapping("/product-entities")
+	List<Product> getAllProductEntities() {
+		Iterable<Product> productIter = productRepo.findAll();
+		List<Product> products = new ArrayList<>();
+		for(Product product : productIter)
+		{
+			products.add(product);
+		}
+		return products;
+	}
+	
+	@GetMapping("/product-entities/{id}")
+	List<Product> getAllProductEntitiesById(@PathVariable("id") Long id) {
+		List<Product> products = productRepo.findBySellerId(id);
+		return products;
 	}
 
 	@PostMapping("/products")

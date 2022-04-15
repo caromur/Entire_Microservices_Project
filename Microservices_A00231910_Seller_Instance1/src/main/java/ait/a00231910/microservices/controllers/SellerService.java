@@ -1,5 +1,7 @@
 package ait.a00231910.microservices.controllers;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,8 +18,14 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.netflix.hystrix.contrib.javanica.annotation.HystrixCommand;
+import com.netflix.hystrix.contrib.javanica.annotation.HystrixProperty;
+
 import ait.a00231910.microservices.dao.SellerRepository;
+import ait.a00231910.microservices.dto.Product;
 import ait.a00231910.microservices.dto.Seller;
+import ait.a00231910.microservices.feignclients.ProductFeignClient;
+import ait.a00231910.microservices.utils.SleepUtils;
 
 @RestController
 @Service
@@ -25,6 +33,9 @@ public class SellerService {
 
 	@Autowired
 	SellerRepository sellerRepo;
+	
+	@Autowired
+	ProductFeignClient productClient;
 	
 	@Value("${seller-manager.helloProperty}")
 	private String helloInstance;
@@ -34,6 +45,7 @@ public class SellerService {
 	{
 		return "Hello World from " + helloInstance;
 	}
+	
 	
 	@GetMapping("/seller/{id}")
 	ResponseEntity getSellerById(@PathVariable("id") Long id) {
@@ -45,12 +57,43 @@ public class SellerService {
 					.body("Seller with an id of: " + id + " not found");
 		}
 	}
+	
+	// Method that gets a seller by Id while simulating a delay specified in milliseconds
+	@HystrixCommand(
+			fallbackMethod="getIdFallbackMethod",
+			commandProperties= {
+					@HystrixProperty(name="execution.isolation.thread.timeoutInMilliseconds", value="500"),
+					@HystrixProperty(name="circuitBreaker.requestVolumeThreshold", value="3")
+			})
+	@GetMapping("/seller-delayed/{id}/{delayMs}")
+	ResponseEntity getSellerByIdDelayed(@PathVariable("id") Long id, @PathVariable("delayMs") int delayMs) {
+		SleepUtils.sleep(delayMs);
+		return getSellerById(id);
+	}
+	
+	public ResponseEntity getIdFallbackMethod(Long id, int delayMs)
+	{
+		return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Fallback method called as microservice is under heavy load");
+	}
 
 	@GetMapping("/sellers")
 	Iterable<Seller> getAllSellers() {
 		return sellerRepo.findAll();
 	}
 
+	@GetMapping("/seller-entities")
+	List<Seller> getAllSellerEntities() {
+		Iterable<Seller> sellerIter = sellerRepo.findAll();
+		List<Seller> sellers = new ArrayList<>();
+		for(Seller seller : sellerIter)
+		{
+			List<Product> products = productClient.getAllProductEntitiesById(seller.getId());
+			seller.setProducts(products);
+			sellers.add(seller);
+		}
+		return sellers;
+	}
+	
 	@PostMapping("/sellers")
 	ResponseEntity<Seller> createSeller(@RequestBody Seller seller) {
 		sellerRepo.save(seller);

@@ -4,6 +4,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -24,6 +26,8 @@ import ait.a00231910.microservices.dto.Product;
 @RestController
 @Service
 public class ProductService {
+	
+	Logger log = LoggerFactory.getLogger(ProductService.class);
 
 	@Autowired
 	ProductRepository productRepo;
@@ -55,6 +59,7 @@ public class ProductService {
 	
 	@GetMapping("/product-entities")
 	List<Product> getAllProductEntities() {
+		log.info("product-entities method called");
 		Iterable<Product> productIter = productRepo.findAll();
 		List<Product> products = new ArrayList<>();
 		for(Product product : productIter)
@@ -66,6 +71,7 @@ public class ProductService {
 	
 	@GetMapping("/product-entities/{id}")
 	List<Product> getAllProductEntitiesById(@PathVariable("id") Long id) {
+		log.info("product-entities/{id} method called");
 		List<Product> products = productRepo.findBySellerId(id);
 		return products;
 	}

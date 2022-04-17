@@ -21,6 +21,7 @@ public class Seller {
 	private String name;
 	private String email;
 	private String number;
+	private String password;
 	
 	@Transient
 	private List<Product> products;
@@ -37,6 +38,16 @@ public class Seller {
 		this.email = email;
 		this.number = number;
 		this.products = products;
+	}
+	
+	public Seller(Long id, String name, String email, String number, List<Product> products, String password) {
+		super();
+		this.id = id;
+		this.name = name;
+		this.email = email;
+		this.number = number;
+		this.products = products;
+		this.password = password;
 	}
 
 	public Long getId() {

@@ -52,12 +52,12 @@ public class ProductService {
 		}
 	}
 
-	@GetMapping("/products")
-	Iterable<Product> getAllProducts() {
-		return productRepo.findAll();
-	}
+//	@GetMapping("/products")
+//	Iterable<Product> getAllProducts() {
+//		return productRepo.findAll();
+//	}
 	
-	@GetMapping("/product-entities")
+	@GetMapping("/products")
 	List<Product> getAllProductEntities() {
 		log.info("product-entities method called");
 		Iterable<Product> productIter = productRepo.findAll();
@@ -69,7 +69,7 @@ public class ProductService {
 		return products;
 	}
 	
-	@GetMapping("/product-entities/{id}")
+	@GetMapping("/products/{id}")
 	List<Product> getAllProductEntitiesById(@PathVariable("id") Long id) {
 		log.info("product-entities/{id} method called");
 		List<Product> products = productRepo.findBySellerId(id);
@@ -109,7 +109,7 @@ public class ProductService {
 	ResponseEntity<String> deleteProductById(@PathVariable("id") Long id) {
 		Optional<Product> savedProduct = productRepo.findById(id);
 		if (savedProduct.isPresent()) {
-			productRepo.delete(savedProduct.get());
+			productRepo.deleteById(id);
 			return ResponseEntity.status(HttpStatus.OK).body(savedProduct.get().toString() + " has been deleted");
 		} else {
 			return ResponseEntity.status(HttpStatus.NOT_FOUND)

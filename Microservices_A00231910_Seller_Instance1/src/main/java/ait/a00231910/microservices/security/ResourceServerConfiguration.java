@@ -14,6 +14,7 @@ public class ResourceServerConfiguration extends ResourceServerConfigurerAdapter
 	public void configure(HttpSecurity http) throws Exception
 	{
 		http.authorizeRequests()
+			.antMatchers(HttpMethod.DELETE, "/seller/*/product/**").hasAnyRole("ADMIN", "SELLER")
 			.antMatchers(HttpMethod.DELETE, "/seller/username/**").hasAnyRole("ADMIN", "SELLER")
 			.antMatchers(HttpMethod.DELETE, "/seller/**").hasRole("ADMIN")
 			.antMatchers(HttpMethod.GET, "/sellers/**").hasRole("ADMIN")

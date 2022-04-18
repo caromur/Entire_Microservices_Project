@@ -23,8 +23,8 @@ public class WebSecurityConfigurer extends WebSecurityConfigurerAdapter{
 	@Autowired
 	AuthenticationManagerBuilder auth;
 	
-	@Autowired
-	InMemoryUserDetailsManager userDetailsManager;
+//	@Autowired
+//	InMemoryUserDetailsManager userDetailsManager;
 		
 	@Override
 	@Bean
@@ -32,35 +32,35 @@ public class WebSecurityConfigurer extends WebSecurityConfigurerAdapter{
 		return super.authenticationManagerBean();
 	}
 	
-//	@Override
-//	@Bean
-//	public UserDetailsService userDetailsServiceBean() throws Exception{
-//		return super.userDetailsServiceBean();
-//	}
+	@Override
+	@Bean
+	public UserDetailsService userDetailsServiceBean() throws Exception{
+		return super.userDetailsServiceBean();
+	}
 	
 	@Override
 	protected void configure(AuthenticationManagerBuilder auth) throws Exception{
-//		auth.inMemoryAuthentication()
-//		.withUser("Adam Carolan").password("{noop}pa55word")
-//		.roles("SELLER", "ADMIN")
-//		.and()
-//		.withUser("Jane Doe").password("{noop}password")
-//		.roles("SELLER")
+		auth.inMemoryAuthentication()
+		.withUser("ADMIN_ACCOUNT").password("{noop}pa55word")
+		.roles("SELLER", "ADMIN")
+		.and()
+		.withUser("SELLER_ACCOUNT").password("{noop}password")
+		.roles("SELLER");
 //		.and().withUser("John Doe").password("{noop}password")
 //		.roles("SELLER");
 		
 		// Uses 
-		auth.userDetailsService(inMemoryUserDetailsManager());
+//		auth.userDetailsService(inMemoryUserDetailsManager());
 				
 	}
 	
-	@Bean
-    public InMemoryUserDetailsManager inMemoryUserDetailsManager() {
-        final Properties users = new Properties();
-        users.put("Adam Carolan","{noop}pa55word,ROLE_ADMIN"); //add whatever other user you need
-        users.put("Jane Doe","{noop}password,ROLE_SELLER"); //add whatever other user you need
-        users.put("John Doe","{noop}password,ROLE_SELLER"); //add whatever other user you need
-        return new InMemoryUserDetailsManager(users);
-    }
+//	@Bean
+//    public InMemoryUserDetailsManager inMemoryUserDetailsManager() {
+//        final Properties users = new Properties();
+//        users.put("Adam Carolan","{noop}pa55word,ROLE_ADMIN"); //add whatever other user you need
+//        users.put("Jane Doe","{noop}password,ROLE_SELLER"); //add whatever other user you need
+//        users.put("John Doe","{noop}password,ROLE_SELLER"); //add whatever other user you need
+//        return new InMemoryUserDetailsManager(users);
+//    }
 
 }

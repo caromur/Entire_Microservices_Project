@@ -36,7 +36,7 @@ import ait.a00231910.microservices.dao.SellerRepository;
 import ait.a00231910.microservices.dto.Product;
 import ait.a00231910.microservices.dto.Seller;
 import ait.a00231910.microservices.dto.TheAccessToken;
-import ait.a00231910.microservices.feignclients.ProductFeignClient;
+import ait.a00231910.microservices.feignclients.ProjectFeignClient;
 import ait.a00231910.microservices.utils.SleepUtils;
 
 @RestController
@@ -49,7 +49,7 @@ public class SellerService {
 	SellerRepository sellerRepo;
 	
 	@Autowired
-	ProductFeignClient productClient;
+	ProjectFeignClient projectClient;
 	
 	@Value("${seller-manager.helloProperty}")
 	private String helloInstance;
@@ -125,27 +125,7 @@ public class SellerService {
 	}
 	
 	
-	@GetMapping("/seller/{id}")
-	ResponseEntity getSellerById(@PathVariable("id") Long id) {
-		Optional<Seller> seller = sellerRepo.findById(id);
-		if (seller.isPresent()) {
-			return ResponseEntity.status(HttpStatus.OK).body(seller);
-		} else {
-			return ResponseEntity.status(HttpStatus.NOT_FOUND)
-					.body("Seller with an id of: " + id + " not found");
-		}
-	}
 	
-	@GetMapping("/seller/username/{name}")
-	ResponseEntity getSellerByName(@PathVariable("name") String name) {
-		Optional<Seller> seller = sellerRepo.findByName(name);
-		if (seller.isPresent()) {
-			return ResponseEntity.status(HttpStatus.OK).body(seller);
-		} else {
-			return ResponseEntity.status(HttpStatus.NOT_FOUND)
-					.body("Seller with a username of: " + name + " not found");
-		}
-	}
 	
 	// Method that gets a seller by Id while simulating a delay specified in milliseconds
 	@HystrixCommand(
@@ -165,29 +145,104 @@ public class SellerService {
 		return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Fallback method called as microservice is under heavy load");
 	}
 
+	// Get list of sellers - Admin role
 	@GetMapping("/sellers")
-	Iterable<Seller> getAllSellers() {
-		return sellerRepo.findAll();
-	}
-
-	@GetMapping("/seller-entities")
 	List<Seller> getAllSellerEntities() {
 		log.info("seller-entities method called");
 		Iterable<Seller> sellerIter = sellerRepo.findAll();
 		List<Seller> sellers = new ArrayList<>();
 		for(Seller seller : sellerIter)
 		{
-			List<Product> products = productClient.getAllProductEntitiesById(seller.getId());
+			List<Product> products = projectClient.getAllProductEntitiesById(seller.getId());
 			seller.setProducts(products);
 			sellers.add(seller);
 		}
 		return sellers;
 	}
 	
+//	@GetMapping("/seller/{username}")
+//	Long getSellerId(@PathVariable("username") String username) {
+//		log.info("getSellerId method called");
+//		Optional<Seller> seller = sellerRepo.findByName(username);
+//		if(seller.isPresent())
+//		{
+//			return seller.get().getId();
+//		}
+//		return -1L;
+//	}
+	
+	// Get seller by ID - Seller role
+	@GetMapping("/seller/{id}")
+	ResponseEntity getSellerById(@PathVariable("id") Long id) {
+		Optional<Seller> seller = sellerRepo.findById(id);
+		if (seller.isPresent()) {
+			List<Product> products = projectClient.getAllProductEntitiesById(id);
+			seller.get().setProducts(products);
+			return ResponseEntity.status(HttpStatus.OK).body(seller);
+		} else {
+			return ResponseEntity.status(HttpStatus.NOT_FOUND)
+					.body("Seller with an id of: " + id + " not found");
+		}
+	}
+	
+	@GetMapping("/seller/username/{name}")
+	ResponseEntity getSellerByName(@PathVariable("name") String name) {
+		Optional<Seller> seller = sellerRepo.findByName(name);
+		if (seller.isPresent()) {
+			List<Product> products = projectClient.getAllProductEntitiesById(seller.get().getId());
+			seller.get().setProducts(products);
+			return ResponseEntity.status(HttpStatus.OK).body(seller);
+		} else {
+			return ResponseEntity.status(HttpStatus.NOT_FOUND)
+					.body("Seller with a username of: " + name + " not found");
+		}
+	}
+	
 	@PostMapping("/sellers")
-	ResponseEntity<Seller> createSeller(@RequestBody Seller seller) {
+	ResponseEntity createSeller(@RequestBody Seller seller) {
+		if(seller.getPassword() == null || seller.getPassword().equals(" "))
+		{
+			seller.setPassword("password");
+		}
+		Optional<Seller> savedSeller = sellerRepo.findByName(seller.getName());
+		if(savedSeller.isPresent())
+		{
+			return ResponseEntity.status(HttpStatus.CONFLICT).body("User already exists");
+		}
+//		projectClient.add(seller.getName(), "{noop}" + seller.getPassword());
 		sellerRepo.save(seller);
+		
 		return ResponseEntity.status(HttpStatus.OK).body(seller);
+	}
+	
+	@PostMapping("/seller/{username}/products")
+	ResponseEntity addProduct(@PathVariable("username") String username, @RequestBody Product product) {
+		Optional<Seller> optSeller = sellerRepo.findByName(username);
+		if(optSeller.isPresent())
+		{
+			Long sellerId = optSeller.get().getId();
+			product.setSellerId(sellerId);
+			projectClient.createProduct(product);
+			return ResponseEntity.status(HttpStatus.OK).body("Done");
+		}
+		
+		return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Not found");
+	}
+	
+	@DeleteMapping("/seller/{username}/product/{id}")
+	ResponseEntity removeProduct(@PathVariable("username") String username, @PathVariable("id") Long id) {
+		Optional<Seller> optSeller = sellerRepo.findByName(username);
+		if(optSeller.isPresent())
+		{
+			Long sellerId = optSeller.get().getId();
+			//Iterable<Seller> products = productRepo.findAll();
+			projectClient.deleteProductById(id);
+//			product.setSellerId(sellerId);
+//			projectClient.createProduct(product);
+			return ResponseEntity.status(HttpStatus.OK).body("Deleted product with id: " + id);
+		}
+		
+		return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User is not present");
 	}
 
 	@PutMapping("/seller/{id}")
@@ -204,7 +259,14 @@ public class SellerService {
 			if (seller.getEmail() == null) {
 				seller.setEmail(savedSeller.get().getEmail());
 			}
-
+			if(seller.getPassword() == null || seller.getPassword().equals(""))
+			{
+				seller.setPassword(savedSeller.get().getPassword());
+			}
+//			projectClient.add(seller.getName(), seller.getPassword());
+//			projectClient.remove(savedSeller.get().getName());
+			List<Product> products = projectClient.getAllProductEntitiesById(seller.getId());
+			seller.setProducts(products);
 			sellerRepo.save(seller);
 			return ResponseEntity.status(HttpStatus.OK).body(seller);
 		} else {
@@ -227,7 +289,14 @@ public class SellerService {
 			if (seller.getEmail() == null) {
 				seller.setEmail(savedSeller.get().getEmail());
 			}
-
+			if(seller.getPassword() == null || seller.getPassword().equals(""))
+			{
+				seller.setPassword(savedSeller.get().getPassword());
+			}
+//			projectClient.add(seller.getName(), seller.getPassword());
+//			projectClient.remove(savedSeller.get().getName());
+			List<Product> products = projectClient.getAllProductEntitiesById(seller.getId());
+			seller.setProducts(products);
 			sellerRepo.save(seller);
 			return ResponseEntity.status(HttpStatus.OK).body(seller);
 		} else {
@@ -241,6 +310,7 @@ public class SellerService {
 		Optional<Seller> savedSeller = sellerRepo.findById(id);
 		if (savedSeller.isPresent()) {
 			sellerRepo.delete(savedSeller.get());
+//			projectClient.remove(savedSeller.get().getName());
 			return ResponseEntity.status(HttpStatus.OK).body(savedSeller.get().toString() + " has been deleted");
 		} else {
 			return ResponseEntity.status(HttpStatus.NOT_FOUND)
@@ -253,6 +323,7 @@ public class SellerService {
 		Optional<Seller> savedSeller = sellerRepo.findByName(name);
 		if (savedSeller.isPresent()) {
 			sellerRepo.delete(savedSeller.get());
+//			projectClient.remove(savedSeller.get().getName());
 			return ResponseEntity.status(HttpStatus.OK).body(savedSeller.get().toString() + " has been deleted");
 		} else {
 			return ResponseEntity.status(HttpStatus.NOT_FOUND)

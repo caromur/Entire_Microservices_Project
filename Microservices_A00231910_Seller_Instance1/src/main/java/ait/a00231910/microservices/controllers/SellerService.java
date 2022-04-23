@@ -1,6 +1,9 @@
 package ait.a00231910.microservices.controllers;
 
+import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -22,6 +25,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestTemplate;
@@ -53,6 +57,8 @@ public class SellerService {
 	
 	@Value("${seller-manager.helloProperty}")
 	private String helloInstance;
+	
+	List<Seller> cachedSellers = null;
 	
 	@RequestMapping("/")
 	public String returnHello()
@@ -131,18 +137,18 @@ public class SellerService {
 	@HystrixCommand(
 			fallbackMethod="getIdFallbackMethod",
 			commandProperties= {
-					@HystrixProperty(name="execution.isolation.thread.timeoutInMilliseconds", value="500"),
+					@HystrixProperty(name="execution.isolation.thread.timeoutInMilliseconds", value="700"),
 					@HystrixProperty(name="circuitBreaker.requestVolumeThreshold", value="3")
 			})
-	@GetMapping("/seller-delayed/{id}/{delayMs}")
-	ResponseEntity getSellerByIdDelayed(@PathVariable("id") Long id, @PathVariable("delayMs") int delayMs) {
+	@GetMapping("/seller-delayed/{delayMs}")
+	List<Seller> getSellersDelayed(@PathVariable("delayMs") int delayMs) {
 		SleepUtils.sleep(delayMs);
-		return getSellerById(id);
+		return getAllSellerEntities();
 	}
 	
-	public ResponseEntity getIdFallbackMethod(Long id, int delayMs)
+	public List<Seller> getIdFallbackMethod(int delayMs)
 	{
-		return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Fallback method called as microservice is under heavy load");
+		return cachedSellers;
 	}
 
 	// Get list of sellers - Admin role
@@ -157,6 +163,7 @@ public class SellerService {
 			seller.setProducts(products);
 			sellers.add(seller);
 		}
+		cachedSellers = sellers;
 		return sellers;
 	}
 	
@@ -216,13 +223,14 @@ public class SellerService {
 	}
 	
 	@PostMapping("/seller/{username}/products")
-	ResponseEntity addProduct(@PathVariable("username") String username, @RequestBody Product product) {
+	ResponseEntity addProduct(@RequestHeader("Authorization") String authorization, @PathVariable("username") String username, @RequestBody Product product) {
 		Optional<Seller> optSeller = sellerRepo.findByName(username);
 		if(optSeller.isPresent())
 		{
 			Long sellerId = optSeller.get().getId();
 			product.setSellerId(sellerId);
-			projectClient.createProduct(product);
+			System.out.println("Authorization: " + authorization);
+			projectClient.createProduct(authorization, product);
 			return ResponseEntity.status(HttpStatus.OK).body("Done");
 		}
 		
@@ -230,16 +238,32 @@ public class SellerService {
 	}
 	
 	@DeleteMapping("/seller/{username}/product/{id}")
-	ResponseEntity removeProduct(@PathVariable("username") String username, @PathVariable("id") Long id) {
+	ResponseEntity removeProduct(@RequestHeader("Authorization") String authorization, @PathVariable("username") String username, @PathVariable("id") Long id) {
 		Optional<Seller> optSeller = sellerRepo.findByName(username);
 		if(optSeller.isPresent())
 		{
 			Long sellerId = optSeller.get().getId();
 			//Iterable<Seller> products = productRepo.findAll();
-			projectClient.deleteProductById(id);
+			projectClient.deleteProductById(authorization, id);
 //			product.setSellerId(sellerId);
 //			projectClient.createProduct(product);
 			return ResponseEntity.status(HttpStatus.OK).body("Deleted product with id: " + id);
+		}
+		
+		return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User is not present");
+	}
+	
+	@PutMapping("/seller/{username}/product/{id}")
+	ResponseEntity putProduct(@RequestHeader("Authorization") String authorization, @PathVariable("username") String username, @PathVariable("id") Long id, @RequestBody Product product) {
+		Optional<Seller> optSeller = sellerRepo.findByName(username);
+		if(optSeller.isPresent())
+		{
+			Long sellerId = optSeller.get().getId();
+			//Iterable<Seller> products = productRepo.findAll();
+			projectClient.updateProductById(authorization, id, product);
+//			product.setSellerId(sellerId);
+//			projectClient.createProduct(product);
+			return ResponseEntity.status(HttpStatus.OK).body("Updated product with id: " + id);
 		}
 		
 		return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User is not present");

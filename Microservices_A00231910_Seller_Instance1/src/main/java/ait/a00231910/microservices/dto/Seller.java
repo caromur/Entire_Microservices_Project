@@ -1,6 +1,5 @@
 package ait.a00231910.microservices.dto;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import javax.persistence.Column;
@@ -9,6 +8,9 @@ import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.Transient;
+import javax.validation.constraints.Email;
+import javax.validation.constraints.NotNull;
+import javax.validation.constraints.Size;
 
 @Entity
 public class Seller {
@@ -18,9 +20,13 @@ public class Seller {
 	@Column(name = "id")
 	private Long id;
 	
+	@NotNull(message="Name cannot be null")
 	private String name;
+	@Email
 	private String email;
+	@Size(min=10, max=20, message="Number should be between 10 and 20 digits")
 	private String number;
+	@Size(min=7, message="Password must be at least 7 characters")
 	private String password;
 	
 	@Transient

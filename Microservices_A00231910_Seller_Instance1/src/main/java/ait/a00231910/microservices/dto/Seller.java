@@ -22,7 +22,7 @@ public class Seller {
 	
 	@NotNull(message="Name cannot be null")
 	private String name;
-	@Email
+	@Email(message="Must be a valid email address format")
 	private String email;
 	@Size(min=10, max=20, message="Number should be between 10 and 20 digits")
 	private String number;

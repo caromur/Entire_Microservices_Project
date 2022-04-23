@@ -5,6 +5,9 @@ import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
+import javax.validation.constraints.NotNull;
+import javax.validation.constraints.Positive;
+import javax.validation.constraints.Size;
 
 @Entity
 public class Product {
@@ -14,9 +17,13 @@ public class Product {
 	@Column(name = "id")
 	private Long id;
 	
+	@Size(min=3, message="Name must be at least 3 characters long")
 	private String name;
+	@Size(min=5, message="Description must be at least 5 characters long")
 	private String description;
+	@Positive(message="Price must be greater than 0")
 	private Double price;
+	@NotNull(message="Seller ID cannot be null")
 	private Long sellerId;
 	
 	public Product()

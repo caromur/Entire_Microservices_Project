@@ -3,6 +3,8 @@ package edu.tus.authenticationservice;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -30,9 +32,12 @@ public class AuthenticationServiceApplication {
 //	@Autowired
 //	AuthenticationManager authManager;
 	
+	Logger log = LoggerFactory.getLogger(AuthenticationServiceApplication.class);
+	
 	@RequestMapping("/auth/user")
 	public Map<String, Object> user(OAuth2Authentication user)
 	{
+		log.info("Authentication service called");
 		Map<String, Object> userInfo = new HashMap<>();
 		userInfo.put("user", user.getUserAuthentication().getPrincipal());
 		userInfo.put("authorities", AuthorityUtils.authorityListToSet(

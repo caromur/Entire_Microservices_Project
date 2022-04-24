@@ -9,7 +9,11 @@ import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Positive;
 import javax.validation.constraints.Size;
 
+import io.swagger.annotations.ApiModel;
+import io.swagger.annotations.ApiModelProperty;
+
 @Entity
+@ApiModel(description="Product details")
 public class Product {
 	
 	@Id
@@ -18,12 +22,16 @@ public class Product {
 	private Long id;
 	
 	@Size(min=3, message="Name must be at least 3 characters long")
+	@ApiModelProperty(notes="Product name")
 	private String name;
 	@Size(min=5, message="Description must be at least 5 characters long")
+	@ApiModelProperty(notes="Product description")
 	private String description;
 	@Positive(message="Price must be greater than 0")
+	@ApiModelProperty(notes="Product price")
 	private Double price;
 	@NotNull(message="Seller ID cannot be null")
+	@ApiModelProperty(notes="Seller ID - Seller that owns the product")
 	private Long sellerId;
 	
 	public Product()

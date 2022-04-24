@@ -12,17 +12,24 @@ import javax.validation.constraints.Email;
 import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Size;
 
+import io.swagger.annotations.ApiModel;
+import io.swagger.annotations.ApiModelProperty;
+
 @Entity
+@ApiModel(description="Seller details")
 public class Seller {
 	
 	@Id
 	@GeneratedValue(strategy=GenerationType.IDENTITY)
 	@Column(name = "id")
+	@ApiModelProperty(notes="Unique seller id")
 	private Long id;
 	
 	@NotNull(message="Name cannot be null")
+	@ApiModelProperty(notes="Seller name")
 	private String name;
-	@Email
+	@Email(message="Must be a valid email address format")
+	@ApiModelProperty(notes="Must be a valid email format")
 	private String email;
 	@Size(min=10, max=20, message="Number should be between 10 and 20 digits")
 	private String number;

@@ -1,9 +1,6 @@
 package ait.a00231910.microservices.controllers;
 
-import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -42,9 +39,15 @@ import ait.a00231910.microservices.dto.Seller;
 import ait.a00231910.microservices.dto.TheAccessToken;
 import ait.a00231910.microservices.feignclients.ProjectFeignClient;
 import ait.a00231910.microservices.utils.SleepUtils;
+import io.swagger.annotations.Api;
+import io.swagger.annotations.ApiOperation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 @RestController
 @Service
+@RequestMapping("/api")
+@Api(value="", tags="Seller Manager")
+@Tag(name="Seller Manager", description="Service to carry out Seller functionality")
 public class SellerService {
 	
 	Logger log = LoggerFactory.getLogger(SellerService.class);
@@ -58,36 +61,43 @@ public class SellerService {
 	@Value("${seller-manager.helloProperty}")
 	private String helloInstance;
 	
-	List<Seller> cachedSellers = null;
+	List<Seller> cachedSellers = new ArrayList<>();
 	
-	@RequestMapping("/")
+	@GetMapping("/ping")
+	@ApiOperation(value="Return Hello World String from instance",
+	notes="Simple API to check that the instance is up and running.")
 	public String returnHello()
 	{
+		log.info("Ping method called");
 		return "Hello World from " + helloInstance;
 	}
 	
-	@RequestMapping("/helloProxied")
+	@ApiOperation(value="Method used for testing hello world through gateway. TESTING ONLY.",
+			notes="Was used for testing rest templates and calling services.")
+	@GetMapping("/helloProxied")
 	public String returnHelloProxied()
 	{
-		String uri = "http://localhost:8080/";
+		log.info("HelloProxied method called");
+		String uri = "http://localhost:8080/api/ping";
 		HttpHeaders headers = new HttpHeaders();
 		HttpEntity<String> entity = new HttpEntity<String>(headers);
 		headers.add("Authorization", "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE2NTAxODI4MzYsInVzZXJfbmFtZSI6IkFkYW0gQ2Fyb2xhbiIsImF1dGhvcml0aWVzIjpbIlJPTEVfQURNSU4iXSwianRpIjoiZWExYzgyZjAtNWFiOC00MjY4LThiNjgtZTNiYjc4OWExYTNkIiwiY2xpZW50X2lkIjoic2hvcC1tYW5hZ2VyLWNsaWVudCIsInNjb3BlIjpbIndlYmNsaWVudCJdfQ.c1ZsHY8vT3RhCnDHxCr-gDBvKxAWtIqz2NSgmlp6sE0");
 		RestTemplate restTemplate = new RestTemplate();
-		//String result = restTemplate.getForObject(uri, String.class);
 		ResponseEntity<String> response = restTemplate.postForEntity(
 				  uri, entity , String.class);
 		System.out.println("THE RESULT IS: " + response.getBody().toString());
 		return response.getBody().toString();
 	}
 	
-	@PostMapping("/bearerProxied")
+	@ApiOperation(value="Method intended to use jackson for extracting token. TESTING ONLY. ",
+			notes="Was going to be used to add create bearer tokens for each seller.")
+	@GetMapping("/bearerProxied")
 	public String getAccessToken()
 	{
+		log.info("GetAccessToken method called");
 		ObjectMapper mapper = new ObjectMapper();
 		String uri = "http://localhost:9999/oauth/token";
 		HttpHeaders headers = new HttpHeaders();
-//		HttpEntity<String> entity = new HttpEntity<String>(headers);
 		headers.add("Authorization", "Basic c2hvcC1tYW5hZ2VyLWNsaWVudDpzZWNyZXRzaG9wcGFzc3dvcmQ=");
 		RestTemplate restTemplate = new RestTemplate();
 		
@@ -103,9 +113,6 @@ public class SellerService {
 		
 		System.out.println("THE REQUEST: " + request.toString());
 		
-		//String result = restTemplate.getForObject(uri, String.class);
-//		ResponseEntity<String> response = restTemplate.postForEntity(
-//				  uri, entity , String.class);
 		String jsonString = response.getBody().toString();
 		TheAccessToken token = null;
 		try {
@@ -123,9 +130,7 @@ public class SellerService {
 		
 		headers = new HttpHeaders();
 		headers.add("Authorization", "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE2NTAxODcyNjYsInVzZXJfbmFtZSI6IkFkYW0gQ2Fyb2xhbiIsImF1dGhvcml0aWVzIjpbIlJPTEVfQURNSU4iXSwianRpIjoiNGFkYTg3ZmYtZmM1MC00MmE0LThjMzgtZDE0NDMwYTdkZWI4IiwiY2xpZW50X2lkIjoic2hvcC1tYW5hZ2VyLWNsaWVudCIsInNjb3BlIjpbIndlYmNsaWVudCJdfQ.9NyuxddHP1uR0xq4GKA_RiEjXeZCM6kSdS7gyFvfNDk");
-		
-		//updateSellerById(1L, new Seller(1L, "Adam Carolan", "adam@email.com", "0890000000", null, token.getAccess_token()));
-		
+				
 		System.out.println("THE RESULT IS: " + token.getAccess_token());
 		return response.getBody();
 	}
@@ -137,11 +142,14 @@ public class SellerService {
 	@HystrixCommand(
 			fallbackMethod="getIdFallbackMethod",
 			commandProperties= {
-					@HystrixProperty(name="execution.isolation.thread.timeoutInMilliseconds", value="700"),
+					@HystrixProperty(name="execution.isolation.thread.timeoutInMilliseconds", value="500"),
 					@HystrixProperty(name="circuitBreaker.requestVolumeThreshold", value="3")
 			})
 	@GetMapping("/seller-delayed/{delayMs}")
+	@ApiOperation(value="Method that gets a seller by Id while simulating a delay specified in milliseconds",
+	notes="Takes in an integer representing the number of milliseconds for the delay.")
 	List<Seller> getSellersDelayed(@PathVariable("delayMs") int delayMs) {
+		log.info("GetSellerDelayed method called");
 		SleepUtils.sleep(delayMs);
 		return getAllSellerEntities();
 	}
@@ -153,8 +161,10 @@ public class SellerService {
 
 	// Get list of sellers - Admin role
 	@GetMapping("/sellers")
+	@ApiOperation(value="Get list of sellers",
+	notes="Admin role only.")
 	List<Seller> getAllSellerEntities() {
-		log.info("seller-entities method called");
+		log.info("sellers method called");
 		Iterable<Seller> sellerIter = sellerRepo.findAll();
 		List<Seller> sellers = new ArrayList<>();
 		for(Seller seller : sellerIter)
@@ -167,20 +177,12 @@ public class SellerService {
 		return sellers;
 	}
 	
-//	@GetMapping("/seller/{username}")
-//	Long getSellerId(@PathVariable("username") String username) {
-//		log.info("getSellerId method called");
-//		Optional<Seller> seller = sellerRepo.findByName(username);
-//		if(seller.isPresent())
-//		{
-//			return seller.get().getId();
-//		}
-//		return -1L;
-//	}
-	
-	// Get seller by ID - Seller role
+	// Get seller by ID - Admin role
 	@GetMapping("/seller/{id}")
+	@ApiOperation(value="Get seller by ID",
+	notes="Admin role required.")
 	ResponseEntity getSellerById(@PathVariable("id") Long id) {
+		log.info("GetSellerById method called");
 		Optional<Seller> seller = sellerRepo.findById(id);
 		if (seller.isPresent()) {
 			List<Product> products = projectClient.getAllProductEntitiesById(id);
@@ -193,7 +195,10 @@ public class SellerService {
 	}
 	
 	@GetMapping("/seller/username/{name}")
+	@ApiOperation(value="Method that gets a seller by username",
+	notes="Requires Admin or Seller role")
 	ResponseEntity getSellerByName(@PathVariable("name") String name) {
+		log.info("GetSellerByUsername method called");
 		Optional<Seller> seller = sellerRepo.findByName(name);
 		if (seller.isPresent()) {
 			List<Product> products = projectClient.getAllProductEntitiesById(seller.get().getId());
@@ -206,7 +211,10 @@ public class SellerService {
 	}
 	
 	@PostMapping("/sellers")
+	@ApiOperation(value="Create a seller",
+	notes="Open to public")
 	ResponseEntity createSeller(@RequestBody Seller seller) {
+		log.info("CreateSeller method called");
 		if(seller.getPassword() == null || seller.getPassword().equals(" "))
 		{
 			seller.setPassword("password");
@@ -216,14 +224,16 @@ public class SellerService {
 		{
 			return ResponseEntity.status(HttpStatus.CONFLICT).body("User already exists");
 		}
-//		projectClient.add(seller.getName(), "{noop}" + seller.getPassword());
 		sellerRepo.save(seller);
 		
 		return ResponseEntity.status(HttpStatus.OK).body(seller);
 	}
 	
 	@PostMapping("/seller/{username}/products")
+	@ApiOperation(value="Add a product for a seller based on username",
+	notes="Requires Admin or Seller role")
 	ResponseEntity addProduct(@RequestHeader("Authorization") String authorization, @PathVariable("username") String username, @RequestBody Product product) {
+		log.info("AddProduct method called");
 		Optional<Seller> optSeller = sellerRepo.findByName(username);
 		if(optSeller.isPresent())
 		{
@@ -238,39 +248,67 @@ public class SellerService {
 	}
 	
 	@DeleteMapping("/seller/{username}/product/{id}")
+	@ApiOperation(value="Delete a product for a seller based on username and product id",
+	notes="Requires an Admin or Seller role.")
 	ResponseEntity removeProduct(@RequestHeader("Authorization") String authorization, @PathVariable("username") String username, @PathVariable("id") Long id) {
+		log.info("RemoveProduct method called");
 		Optional<Seller> optSeller = sellerRepo.findByName(username);
+		Optional<Product> optProduct = projectClient.getProductById(id);
 		if(optSeller.isPresent())
 		{
 			Long sellerId = optSeller.get().getId();
-			//Iterable<Seller> products = productRepo.findAll();
-			projectClient.deleteProductById(authorization, id);
-//			product.setSellerId(sellerId);
-//			projectClient.createProduct(product);
-			return ResponseEntity.status(HttpStatus.OK).body("Deleted product with id: " + id);
+			String result = "";
+			if(optProduct.isPresent())
+			{
+				if(sellerId == optProduct.get().getSellerId())
+				{
+					return projectClient.deleteProductById(authorization, id, sellerId);
+				}
+				else
+				{
+					return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("User cannot delete that product");
+				}
+			}
 		}
 		
 		return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User is not present");
 	}
 	
+	@DeleteMapping("/seller/product/{id}")
+	@ApiOperation(value="Delete a product for a seller based on a product id",
+	notes="Requires an Admin role.")
+	ResponseEntity removeProductAdmin(@RequestHeader("Authorization") String authorization, @PathVariable("id") Long id) {
+		log.info("RemoveProductAdmin method called");
+		Optional<Product> optProduct = projectClient.getProductById(id);
+		if(optProduct.isPresent())
+		{
+			return projectClient.deleteProductById(authorization, id, 0L);
+		}
+		return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Product is not present");
+	}
+	
 	@PutMapping("/seller/{username}/product/{id}")
+	@ApiOperation(value="Update a product based on username and product id.",
+	notes="Requires a Seller or Admin role.")
 	ResponseEntity putProduct(@RequestHeader("Authorization") String authorization, @PathVariable("username") String username, @PathVariable("id") Long id, @RequestBody Product product) {
+		log.info("PutProduct method called");
 		Optional<Seller> optSeller = sellerRepo.findByName(username);
 		if(optSeller.isPresent())
 		{
 			Long sellerId = optSeller.get().getId();
-			//Iterable<Seller> products = productRepo.findAll();
-			projectClient.updateProductById(authorization, id, product);
-//			product.setSellerId(sellerId);
-//			projectClient.createProduct(product);
-			return ResponseEntity.status(HttpStatus.OK).body("Updated product with id: " + id);
+			product.setSellerId(sellerId);
+			ResponseEntity<String> result = projectClient.updateProductById(authorization, id, product);
+			return result;
 		}
 		
 		return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User is not present");
 	}
 
 	@PutMapping("/seller/{id}")
+	@ApiOperation(value="Update a seller based on seller id.",
+	notes="Requires an Admin role.")
 	ResponseEntity updateSellerById(@PathVariable("id") Long id, @RequestBody Seller seller) {
+		log.info("UpdateSellerById method called");
 		seller.setId(id);
 		Optional<Seller> savedSeller = sellerRepo.findById(id);
 		if (savedSeller.isPresent()) {
@@ -287,20 +325,21 @@ public class SellerService {
 			{
 				seller.setPassword(savedSeller.get().getPassword());
 			}
-//			projectClient.add(seller.getName(), seller.getPassword());
-//			projectClient.remove(savedSeller.get().getName());
 			List<Product> products = projectClient.getAllProductEntitiesById(seller.getId());
 			seller.setProducts(products);
 			sellerRepo.save(seller);
 			return ResponseEntity.status(HttpStatus.OK).body(seller);
 		} else {
 			return ResponseEntity.status(HttpStatus.NOT_FOUND)
-					.body("Seller with an id of: " + id + " not found");
+					.body("Seller with an id of: " + seller.getId() + " not found");
 		}
 	}
 	
 	@PutMapping("/seller/username/{name}")
+	@ApiOperation(value="Update a seller based on username.",
+	notes="Requires an Admin or Seller role.")
 	ResponseEntity updateSellerByName(@PathVariable("name") String name, @RequestBody Seller seller) {
+		log.info("UpdateSellerByName method called");
 		Optional<Seller> savedSeller = sellerRepo.findByName(name);
 		if (savedSeller.isPresent()) {
 			seller.setId(savedSeller.get().getId());
@@ -317,8 +356,6 @@ public class SellerService {
 			{
 				seller.setPassword(savedSeller.get().getPassword());
 			}
-//			projectClient.add(seller.getName(), seller.getPassword());
-//			projectClient.remove(savedSeller.get().getName());
 			List<Product> products = projectClient.getAllProductEntitiesById(seller.getId());
 			seller.setProducts(products);
 			sellerRepo.save(seller);
@@ -330,11 +367,13 @@ public class SellerService {
 	}
 
 	@DeleteMapping("/seller/{id}")
+	@ApiOperation(value="Delete a seller based on seller id.",
+	notes="Requires an Admin role.")
 	ResponseEntity<String> deleteSellerById(@PathVariable("id") Long id) {
+		log.info("DeleteSellerById method called");
 		Optional<Seller> savedSeller = sellerRepo.findById(id);
 		if (savedSeller.isPresent()) {
 			sellerRepo.delete(savedSeller.get());
-//			projectClient.remove(savedSeller.get().getName());
 			return ResponseEntity.status(HttpStatus.OK).body(savedSeller.get().toString() + " has been deleted");
 		} else {
 			return ResponseEntity.status(HttpStatus.NOT_FOUND)
@@ -343,11 +382,13 @@ public class SellerService {
 	}
 	
 	@DeleteMapping("/seller/username/{name}")
-	ResponseEntity<String> deleteSellerById(@PathVariable("name") String name) {
+	@ApiOperation(value="Delete a seller based on username.",
+	notes="Requires an Admin or Seller role.")
+	ResponseEntity<String> deleteSellerByUsernameAndId(@PathVariable("name") String name) {
+		log.info("DeleteSellerByUsernameAndId method called");
 		Optional<Seller> savedSeller = sellerRepo.findByName(name);
 		if (savedSeller.isPresent()) {
 			sellerRepo.delete(savedSeller.get());
-//			projectClient.remove(savedSeller.get().getName());
 			return ResponseEntity.status(HttpStatus.OK).body(savedSeller.get().toString() + " has been deleted");
 		} else {
 			return ResponseEntity.status(HttpStatus.NOT_FOUND)

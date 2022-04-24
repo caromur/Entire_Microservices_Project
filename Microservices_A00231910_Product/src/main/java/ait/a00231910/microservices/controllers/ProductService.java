@@ -22,9 +22,15 @@ import org.springframework.web.bind.annotation.RestController;
 
 import ait.a00231910.microservices.dao.ProductRepository;
 import ait.a00231910.microservices.dto.Product;
+import io.swagger.annotations.Api;
+import io.swagger.annotations.ApiOperation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 @RestController
 @Service
+@RequestMapping("/api")
+@Api(value="", tags="Product Manager")
+@Tag(name="Product Manager", description="Service to carry out Product functionality")
 public class ProductService {
 	
 	Logger log = LoggerFactory.getLogger(ProductService.class);
@@ -35,14 +41,20 @@ public class ProductService {
 	@Value("${product-manager.helloProperty}")
 	private String helloInstance;
 	
-	@RequestMapping("/")
+	@GetMapping("/ping")
+	@ApiOperation(value="Return Hello World String from instance",
+	notes="Simple API to check that the instance is up and running.")
 	public String returnHello()
 	{
+		log.info("Ping method called");
 		return "Hello World from " + helloInstance;
 	}
 	
 	@GetMapping("/product/{id}")
+	@ApiOperation(value="Return a product based on an id",
+	notes="Publicly available.")
 	ResponseEntity getProductById(@PathVariable("id") Long id) {
+		log.info("product/{id} method called");
 		Optional<Product> product = productRepo.findById(id);
 		if (product.isPresent()) {
 			return ResponseEntity.status(HttpStatus.OK).body(product);
@@ -51,15 +63,12 @@ public class ProductService {
 					.body("Product with an id of: " + id + " not found");
 		}
 	}
-
-//	@GetMapping("/products")
-//	Iterable<Product> getAllProducts() {
-//		return productRepo.findAll();
-//	}
 	
 	@GetMapping("/products")
+	@ApiOperation(value="Return list of all products.",
+	notes="Publicly available.")
 	List<Product> getAllProductEntities() {
-		log.info("product-entities method called");
+		log.info("products method called");
 		Iterable<Product> productIter = productRepo.findAll();
 		List<Product> products = new ArrayList<>();
 		for(Product product : productIter)
@@ -70,20 +79,28 @@ public class ProductService {
 	}
 	
 	@GetMapping("/products/{id}")
+	@ApiOperation(value="Return list of products for a particular user.",
+	notes="Restricted to Admin and Seller roles.")
 	List<Product> getAllProductEntitiesById(@PathVariable("id") Long id) {
-		log.info("product-entities/{id} method called");
+		log.info("products/{id} method called");
 		List<Product> products = productRepo.findBySellerId(id);
 		return products;
 	}
 
 	@PostMapping("/products")
+	@ApiOperation(value="Create a product.",
+	notes="Restricted to Seller and Admin roles.")
 	ResponseEntity<Product> createProduct(@RequestBody Product product) {
+		log.info("CreateProduct method called");
 		productRepo.save(product);
 		return ResponseEntity.status(HttpStatus.OK).body(product);
 	}
 
 	@PutMapping("/product/{id}")
+	@ApiOperation(value="Update a product.",
+	notes="Restricted to Seller and Admin roles.")
 	ResponseEntity updateProductById(@PathVariable("id") Long id, @RequestBody Product product) {
+		log.info("UpdateProductById method called");
 		product.setId(id);
 		Optional<Product> savedProduct = productRepo.findById(id);
 		if (savedProduct.isPresent()) {
@@ -96,17 +113,26 @@ public class ProductService {
 			if (product.getDescription() == null) {
 				product.setDescription(savedProduct.get().getDescription());
 			}
-
-			productRepo.save(product);
-			return ResponseEntity.status(HttpStatus.OK).body(product);
+			if(product.getSellerId() == savedProduct.get().getSellerId())
+			{
+				productRepo.save(product);
+				return ResponseEntity.status(HttpStatus.OK).body(product);
+			}
+			else
+			{
+				return ResponseEntity.status(HttpStatus.OK).body("Product does not belong to this user");
+			}
 		} else {
 			return ResponseEntity.status(HttpStatus.NOT_FOUND)
-					.body("Seller with an id of: " + id + " not found");
+					.body("Product with an id of: " + id + " not found");
 		}
 	}
 
 	@DeleteMapping("/product/{id}")
-	ResponseEntity<String> deleteProductById(@PathVariable("id") Long id) {
+	@ApiOperation(value="Delete a product.",
+	notes="Restricted to Seller and Admin roles.")
+	ResponseEntity<String> deleteProductById(@PathVariable("id") Long id, Long sellerId) {
+		log.info("DeleteProductById method called");
 		Optional<Product> savedProduct = productRepo.findById(id);
 		if (savedProduct.isPresent()) {
 			productRepo.deleteById(id);

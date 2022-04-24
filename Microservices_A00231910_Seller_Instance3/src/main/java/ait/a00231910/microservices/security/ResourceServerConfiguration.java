@@ -14,17 +14,22 @@ public class ResourceServerConfiguration extends ResourceServerConfigurerAdapter
 	public void configure(HttpSecurity http) throws Exception
 	{
 		http.authorizeRequests()
-			.antMatchers(HttpMethod.DELETE, "/seller/*/product/**").hasAnyRole("ADMIN", "SELLER")
-			.antMatchers(HttpMethod.DELETE, "/seller/username/**").hasAnyRole("ADMIN", "SELLER")
-			.antMatchers(HttpMethod.DELETE, "/seller/**").hasRole("ADMIN")
-			.antMatchers(HttpMethod.GET, "/sellers/**").hasRole("ADMIN")
-			.antMatchers(HttpMethod.GET, "/seller/username/**").hasAnyRole("ADMIN", "SELLER")
-			.antMatchers(HttpMethod.GET, "/seller/**").hasRole("ADMIN")
-			.antMatchers(HttpMethod.PUT, "/seller/username/**").hasAnyRole("ADMIN", "SELLER")
-			.antMatchers(HttpMethod.PUT, "/seller/**").hasRole("ADMIN")
-			.antMatchers(HttpMethod.PUT, "/seller-delayed/**").hasRole("ADMIN")
-			.antMatchers(HttpMethod.POST, "/sellers/**").permitAll()
-			.antMatchers(HttpMethod.GET, "/").permitAll()
+			.antMatchers(HttpMethod.DELETE, "/api/seller/*/product/**").hasAnyRole("ADMIN", "SELLER")
+			.antMatchers(HttpMethod.DELETE, "/api/seller/username/**").hasAnyRole("ADMIN", "SELLER")
+			.antMatchers(HttpMethod.DELETE, "/api/seller/**").hasRole("ADMIN")
+			.antMatchers(HttpMethod.GET, "/api/sellers/**").hasRole("ADMIN")
+			.antMatchers(HttpMethod.GET, "/api/seller/username/**").hasAnyRole("ADMIN", "SELLER")
+			.antMatchers(HttpMethod.GET, "/api/seller/**").hasRole("ADMIN")
+			.antMatchers(HttpMethod.PUT, "/api/seller/username/**").hasAnyRole("ADMIN", "SELLER")
+			.antMatchers(HttpMethod.PUT, "/api/seller/**").hasRole("ADMIN")
+			.antMatchers(HttpMethod.PUT, "/api/seller-delayed/**").hasRole("ADMIN")
+			.antMatchers(HttpMethod.POST, "/api/sellers/**").permitAll()
+			.antMatchers(HttpMethod.GET, "/api/ping").permitAll()
+			//.antMatchers(HttpMethod.GET, "/").permitAll()
+			.antMatchers(HttpMethod.GET, "/v2/api-docs/**").permitAll()
+			.antMatchers(HttpMethod.GET, "/v3/api-docs/**").permitAll()
+			.antMatchers(HttpMethod.GET, "/swagger-ui/**").permitAll()
+			.antMatchers(HttpMethod.GET, "/swagger-resources/**").permitAll()
 			.anyRequest().authenticated();
 
 	}

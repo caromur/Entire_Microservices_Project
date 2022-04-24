@@ -120,7 +120,7 @@ public class ProductService {
 			}
 			else
 			{
-				return ResponseEntity.status(HttpStatus.OK).body("Product does not belong to this user");
+				return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Product does not belong to this user");
 			}
 		} else {
 			return ResponseEntity.status(HttpStatus.NOT_FOUND)

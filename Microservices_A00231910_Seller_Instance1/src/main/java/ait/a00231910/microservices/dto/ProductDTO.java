@@ -1,17 +1,10 @@
 package ait.a00231910.microservices.dto;
 
-//import javax.persistence.Column;
-//import javax.persistence.Entity;
-//import javax.persistence.GeneratedValue;
-//import javax.persistence.GenerationType;
-//import javax.persistence.Id;
+import io.swagger.annotations.ApiModel;
 
-//@Entity
-public class Product {
+@ApiModel(description="Product details")
+public class ProductDTO {
 	
-	//@Id
-	//@GeneratedValue(strategy=GenerationType.IDENTITY)
-	//@Column(name = "id")
 	private Long id;
 	
 	private String name;
@@ -19,12 +12,12 @@ public class Product {
 	private Double price;
 	private Long sellerId;
 	
-	public Product()
+	public ProductDTO()
 	{
 		
 	}
 	
-	public Product(Long id, String name, String description, double price, Long sellerId) {
+	public ProductDTO(Long id, String name, String description, double price, Long sellerId) {
 		super();
 		this.id = id;
 		this.name = name;

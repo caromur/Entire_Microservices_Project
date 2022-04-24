@@ -34,9 +34,10 @@ import com.netflix.hystrix.contrib.javanica.annotation.HystrixCommand;
 import com.netflix.hystrix.contrib.javanica.annotation.HystrixProperty;
 
 import ait.a00231910.microservices.dao.SellerRepository;
-import ait.a00231910.microservices.dto.Product;
-import ait.a00231910.microservices.dto.Seller;
+import ait.a00231910.microservices.dto.ProductDTO;
+import ait.a00231910.microservices.dto.SellerDTO;
 import ait.a00231910.microservices.dto.TheAccessToken;
+import ait.a00231910.microservices.entities.Seller;
 import ait.a00231910.microservices.feignclients.ProjectFeignClient;
 import ait.a00231910.microservices.utils.SleepUtils;
 import io.swagger.annotations.Api;
@@ -61,7 +62,7 @@ public class SellerService {
 	@Value("${seller-manager.helloProperty}")
 	private String helloInstance;
 	
-	List<Seller> cachedSellers = new ArrayList<>();
+	List<SellerDTO> cachedSellers = new ArrayList<>();
 	
 	@GetMapping("/ping")
 	@ApiOperation(value="Return Hello World String from instance",
@@ -148,13 +149,13 @@ public class SellerService {
 	@GetMapping("/seller-delayed/{delayMs}")
 	@ApiOperation(value="Method that gets a seller by Id while simulating a delay specified in milliseconds",
 	notes="Takes in an integer representing the number of milliseconds for the delay.")
-	List<Seller> getSellersDelayed(@PathVariable("delayMs") int delayMs) {
+	List<SellerDTO> getSellersDelayed(@PathVariable("delayMs") int delayMs) {
 		log.info("GetSellerDelayed method called");
 		SleepUtils.sleep(delayMs);
 		return getAllSellerEntities();
 	}
 	
-	public List<Seller> getIdFallbackMethod(int delayMs)
+	public List<SellerDTO> getIdFallbackMethod(int delayMs)
 	{
 		return cachedSellers;
 	}
@@ -163,15 +164,16 @@ public class SellerService {
 	@GetMapping("/sellers")
 	@ApiOperation(value="Get list of sellers",
 	notes="Admin role only.")
-	List<Seller> getAllSellerEntities() {
+	List<SellerDTO> getAllSellerEntities() {
 		log.info("sellers method called");
 		Iterable<Seller> sellerIter = sellerRepo.findAll();
-		List<Seller> sellers = new ArrayList<>();
+		List<SellerDTO> sellers = new ArrayList<>();
 		for(Seller seller : sellerIter)
 		{
-			List<Product> products = projectClient.getAllProductEntitiesById(seller.getId());
-			seller.setProducts(products);
-			sellers.add(seller);
+			SellerDTO sellerDTO = new SellerDTO(seller);
+			List<ProductDTO> products = projectClient.getAllProductEntitiesById(sellerDTO.getId());
+			sellerDTO.setProducts(products);
+			sellers.add(sellerDTO);
 		}
 		cachedSellers = sellers;
 		return sellers;
@@ -185,7 +187,7 @@ public class SellerService {
 		log.info("GetSellerById method called");
 		Optional<Seller> seller = sellerRepo.findById(id);
 		if (seller.isPresent()) {
-			List<Product> products = projectClient.getAllProductEntitiesById(id);
+			List<ProductDTO> products = projectClient.getAllProductEntitiesById(id);
 			seller.get().setProducts(products);
 			return ResponseEntity.status(HttpStatus.OK).body(seller);
 		} else {
@@ -201,7 +203,7 @@ public class SellerService {
 		log.info("GetSellerByUsername method called");
 		Optional<Seller> seller = sellerRepo.findByName(name);
 		if (seller.isPresent()) {
-			List<Product> products = projectClient.getAllProductEntitiesById(seller.get().getId());
+			List<ProductDTO> products = projectClient.getAllProductEntitiesById(seller.get().getId());
 			seller.get().setProducts(products);
 			return ResponseEntity.status(HttpStatus.OK).body(seller);
 		} else {
@@ -213,7 +215,8 @@ public class SellerService {
 	@PostMapping("/sellers")
 	@ApiOperation(value="Create a seller",
 	notes="Open to public")
-	ResponseEntity createSeller(@RequestBody Seller seller) {
+	ResponseEntity createSeller(@RequestBody SellerDTO sellerDTO) {
+		Seller seller = new Seller(sellerDTO);
 		log.info("CreateSeller method called");
 		if(seller.getPassword() == null || seller.getPassword().equals(" "))
 		{
@@ -226,13 +229,13 @@ public class SellerService {
 		}
 		sellerRepo.save(seller);
 		
-		return ResponseEntity.status(HttpStatus.OK).body(seller);
+		return ResponseEntity.status(HttpStatus.CREATED).body(seller);
 	}
 	
 	@PostMapping("/seller/{username}/products")
 	@ApiOperation(value="Add a product for a seller based on username",
 	notes="Requires Admin or Seller role")
-	ResponseEntity addProduct(@RequestHeader("Authorization") String authorization, @PathVariable("username") String username, @RequestBody Product product) {
+	ResponseEntity addProduct(@RequestHeader("Authorization") String authorization, @PathVariable("username") String username, @RequestBody ProductDTO product) {
 		log.info("AddProduct method called");
 		Optional<Seller> optSeller = sellerRepo.findByName(username);
 		if(optSeller.isPresent())
@@ -241,7 +244,7 @@ public class SellerService {
 			product.setSellerId(sellerId);
 			System.out.println("Authorization: " + authorization);
 			projectClient.createProduct(authorization, product);
-			return ResponseEntity.status(HttpStatus.OK).body("Done");
+			return ResponseEntity.status(HttpStatus.CREATED).body("Done");
 		}
 		
 		return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Not found");
@@ -253,7 +256,7 @@ public class SellerService {
 	ResponseEntity removeProduct(@RequestHeader("Authorization") String authorization, @PathVariable("username") String username, @PathVariable("id") Long id) {
 		log.info("RemoveProduct method called");
 		Optional<Seller> optSeller = sellerRepo.findByName(username);
-		Optional<Product> optProduct = projectClient.getProductById(id);
+		Optional<ProductDTO> optProduct = projectClient.getProductById(id);
 		if(optSeller.isPresent())
 		{
 			Long sellerId = optSeller.get().getId();
@@ -278,7 +281,7 @@ public class SellerService {
 	notes="Requires an Admin role.")
 	ResponseEntity removeProductAdmin(@RequestHeader("Authorization") String authorization, @PathVariable("id") Long id) {
 		log.info("RemoveProductAdmin method called");
-		Optional<Product> optProduct = projectClient.getProductById(id);
+		Optional<ProductDTO> optProduct = projectClient.getProductById(id);
 		if(optProduct.isPresent())
 		{
 			return projectClient.deleteProductById(authorization, id, 0L);
@@ -289,15 +292,23 @@ public class SellerService {
 	@PutMapping("/seller/{username}/product/{id}")
 	@ApiOperation(value="Update a product based on username and product id.",
 	notes="Requires a Seller or Admin role.")
-	ResponseEntity putProduct(@RequestHeader("Authorization") String authorization, @PathVariable("username") String username, @PathVariable("id") Long id, @RequestBody Product product) {
+	ResponseEntity putProduct(@RequestHeader("Authorization") String authorization, @PathVariable("username") String username, @PathVariable("id") Long id, @RequestBody ProductDTO product) {
 		log.info("PutProduct method called");
 		Optional<Seller> optSeller = sellerRepo.findByName(username);
 		if(optSeller.isPresent())
 		{
 			Long sellerId = optSeller.get().getId();
 			product.setSellerId(sellerId);
-			ResponseEntity<String> result = projectClient.updateProductById(authorization, id, product);
-			return result;
+			ResponseEntity<String> result;
+			try
+			{
+				result = projectClient.updateProductById(authorization, id, product);
+				return result;
+			}
+			catch(Exception ex)
+			{
+				return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("User cannot update that product");
+			}
 		}
 		
 		return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User is not present");
@@ -306,8 +317,9 @@ public class SellerService {
 	@PutMapping("/seller/{id}")
 	@ApiOperation(value="Update a seller based on seller id.",
 	notes="Requires an Admin role.")
-	ResponseEntity updateSellerById(@PathVariable("id") Long id, @RequestBody Seller seller) {
+	ResponseEntity updateSellerById(@PathVariable("id") Long id, @RequestBody SellerDTO sellerDTO) {
 		log.info("UpdateSellerById method called");
+		Seller seller = new Seller(sellerDTO);
 		seller.setId(id);
 		Optional<Seller> savedSeller = sellerRepo.findById(id);
 		if (savedSeller.isPresent()) {
@@ -324,7 +336,7 @@ public class SellerService {
 			{
 				seller.setPassword(savedSeller.get().getPassword());
 			}
-			List<Product> products = projectClient.getAllProductEntitiesById(seller.getId());
+			List<ProductDTO> products = projectClient.getAllProductEntitiesById(seller.getId());
 			seller.setProducts(products);
 			sellerRepo.save(seller);
 			return ResponseEntity.status(HttpStatus.OK).body(seller);
@@ -337,8 +349,9 @@ public class SellerService {
 	@PutMapping("/seller/username/{name}")
 	@ApiOperation(value="Update a seller based on username.",
 	notes="Requires an Admin or Seller role.")
-	ResponseEntity updateSellerByName(@PathVariable("name") String name, @RequestBody Seller seller) {
+	ResponseEntity updateSellerByName(@PathVariable("name") String name, @RequestBody SellerDTO sellerDTO) {
 		log.info("UpdateSellerByName method called");
+		Seller seller = new Seller(sellerDTO);
 		Optional<Seller> savedSeller = sellerRepo.findByName(name);
 		if (savedSeller.isPresent()) {
 			seller.setId(savedSeller.get().getId());
@@ -355,7 +368,7 @@ public class SellerService {
 			{
 				seller.setPassword(savedSeller.get().getPassword());
 			}
-			List<Product> products = projectClient.getAllProductEntitiesById(seller.getId());
+			List<ProductDTO> products = projectClient.getAllProductEntitiesById(seller.getId());
 			seller.setProducts(products);
 			sellerRepo.save(seller);
 			return ResponseEntity.status(HttpStatus.OK).body(seller);
@@ -372,9 +385,9 @@ public class SellerService {
 		log.info("DeleteSellerById method called");
 		Optional<Seller> savedSeller = sellerRepo.findById(id);
 		if (savedSeller.isPresent()) {
-			List<Product> sellersProducts = projectClient.getAllProductEntitiesById(id);
+			List<ProductDTO> sellersProducts = projectClient.getAllProductEntitiesById(id);
 			sellerRepo.delete(savedSeller.get());
-			for(Product product: sellersProducts)
+			for(ProductDTO product: sellersProducts)
 			{
 				removeProductAdmin(authorization, product.getId());
 			}
@@ -392,8 +405,8 @@ public class SellerService {
 		log.info("DeleteSellerByUsernameAndId method called");
 		Optional<Seller> savedSeller = sellerRepo.findByName(name);
 		if (savedSeller.isPresent()) {
-			List<Product> sellersProducts = projectClient.getAllProductEntitiesById(savedSeller.get().getId());
-			for(Product product: sellersProducts)
+			List<ProductDTO> sellersProducts = projectClient.getAllProductEntitiesById(savedSeller.get().getId());
+			for(ProductDTO product: sellersProducts)
 			{
 				removeProduct(authorization, savedSeller.get().getName(), product.getId());
 			}

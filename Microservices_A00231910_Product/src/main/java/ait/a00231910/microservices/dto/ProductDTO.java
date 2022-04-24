@@ -9,37 +9,39 @@ import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Positive;
 import javax.validation.constraints.Size;
 
+import ait.a00231910.microservices.entity.Product;
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiModelProperty;
 
-@Entity
 @ApiModel(description="Product details")
-public class Product {
+public class ProductDTO {
 	
-	@Id
-	@GeneratedValue(strategy=GenerationType.IDENTITY)
-	@Column(name = "id")
 	private Long id;
 	
-	@Size(min=3, message="Name must be at least 3 characters long")
-	@ApiModelProperty(notes="Product name")
+	@ApiModelProperty(notes="Product name must be at least 3 characters long")
 	private String name;
-	@Size(min=5, message="Description must be at least 5 characters long")
-	@ApiModelProperty(notes="Product description")
+	@ApiModelProperty(notes="Product description must be at least 5 characters long")
 	private String description;
-	@Positive(message="Price must be greater than 0")
-	@ApiModelProperty(notes="Product price")
+	@ApiModelProperty(notes="Product price must be greater than 0")
 	private Double price;
-	@NotNull(message="Seller ID cannot be null")
-	@ApiModelProperty(notes="Seller ID - Seller that owns the product")
+	@ApiModelProperty(notes="Seller ID - Seller that owns the product - cannot be null")
 	private Long sellerId;
 	
-	public Product()
+	public ProductDTO()
 	{
 		
 	}
 	
-	public Product(Long id, String name, String description, double price, Long sellerId) {
+	public ProductDTO(Product product)
+	{
+		this.id = product.getId();
+		this.name = product.getName();
+		this.description = product.getDescription();
+		this.price = product.getPrice();
+		this.sellerId = product.getSellerId();
+	}
+	
+	public ProductDTO(Long id, String name, String description, double price, Long sellerId) {
 		super();
 		this.id = id;
 		this.name = name;

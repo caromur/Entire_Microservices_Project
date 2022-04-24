@@ -16,7 +16,7 @@ public class TheAccessToken {
 //		this.scope = scope;
 //		this.jti = jti;
 //	}
-
+	
 	public String getAccess_token() {
 		return access_token;
 	}

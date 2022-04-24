@@ -1,7 +1,5 @@
 package ait.a00231910.microservices.documentation;
 
-import static springfox.documentation.builders.PathSelectors.regex;
-
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 

@@ -21,7 +21,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import ait.a00231910.microservices.dao.ProductRepository;
-import ait.a00231910.microservices.dto.Product;
+import ait.a00231910.microservices.dto.ProductDTO;
+import ait.a00231910.microservices.entity.Product;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -57,7 +58,8 @@ public class ProductService {
 		log.info("product/{id} method called");
 		Optional<Product> product = productRepo.findById(id);
 		if (product.isPresent()) {
-			return ResponseEntity.status(HttpStatus.OK).body(product);
+			ProductDTO productDTO = new ProductDTO(product.get());
+			return ResponseEntity.status(HttpStatus.OK).body(productDTO);
 		} else {
 			return ResponseEntity.status(HttpStatus.NOT_FOUND)
 					.body("Product with an id of: " + id + " not found");
@@ -67,13 +69,13 @@ public class ProductService {
 	@GetMapping("/products")
 	@ApiOperation(value="Return list of all products.",
 	notes="Publicly available.")
-	List<Product> getAllProductEntities() {
+	List<ProductDTO> getAllProductEntities() {
 		log.info("products method called");
 		Iterable<Product> productIter = productRepo.findAll();
-		List<Product> products = new ArrayList<>();
+		List<ProductDTO> products = new ArrayList<>();
 		for(Product product : productIter)
 		{
-			products.add(product);
+			products.add(new ProductDTO(product));
 		}
 		return products;
 	}
@@ -81,26 +83,33 @@ public class ProductService {
 	@GetMapping("/products/{id}")
 	@ApiOperation(value="Return list of products for a particular user.",
 	notes="Restricted to Admin and Seller roles.")
-	List<Product> getAllProductEntitiesById(@PathVariable("id") Long id) {
+	List<ProductDTO> getAllProductEntitiesById(@PathVariable("id") Long id) {
 		log.info("products/{id} method called");
 		List<Product> products = productRepo.findBySellerId(id);
-		return products;
+		List<ProductDTO> productsDTO = new ArrayList<>();
+		for(Product product: products)
+		{
+			productsDTO.add(new ProductDTO(product));
+		}
+		return productsDTO;
 	}
 
 	@PostMapping("/products")
 	@ApiOperation(value="Create a product.",
 	notes="Restricted to Seller and Admin roles.")
-	ResponseEntity<Product> createProduct(@RequestBody Product product) {
+	ResponseEntity<ProductDTO> createProduct(@RequestBody ProductDTO productDTO) {
 		log.info("CreateProduct method called");
+		Product product = new Product(productDTO);
 		productRepo.save(product);
-		return ResponseEntity.status(HttpStatus.OK).body(product);
+		return ResponseEntity.status(HttpStatus.OK).body(productDTO);
 	}
 
 	@PutMapping("/product/{id}")
 	@ApiOperation(value="Update a product.",
 	notes="Restricted to Seller and Admin roles.")
-	ResponseEntity updateProductById(@PathVariable("id") Long id, @RequestBody Product product) {
+	ResponseEntity<String> updateProductById(@PathVariable("id") Long id, @RequestBody ProductDTO productDTO) {
 		log.info("UpdateProductById method called");
+		Product product = new Product(productDTO);
 		product.setId(id);
 		Optional<Product> savedProduct = productRepo.findById(id);
 		if (savedProduct.isPresent()) {
@@ -116,7 +125,7 @@ public class ProductService {
 			if(product.getSellerId() == savedProduct.get().getSellerId())
 			{
 				productRepo.save(product);
-				return ResponseEntity.status(HttpStatus.OK).body(product);
+				return ResponseEntity.status(HttpStatus.OK).body(product.toString() + " has been updated.");
 			}
 			else
 			{

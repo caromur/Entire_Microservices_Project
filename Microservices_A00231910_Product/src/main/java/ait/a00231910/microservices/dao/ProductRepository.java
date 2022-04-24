@@ -5,7 +5,7 @@ import java.util.List;
 import org.springframework.data.repository.CrudRepository;
 import org.springframework.stereotype.Repository;
 
-import ait.a00231910.microservices.dto.Product;
+import ait.a00231910.microservices.entity.Product;
 
 
 @Repository

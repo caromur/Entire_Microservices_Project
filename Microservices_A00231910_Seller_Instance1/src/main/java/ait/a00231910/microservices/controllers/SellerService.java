@@ -257,7 +257,6 @@ public class SellerService {
 		if(optSeller.isPresent())
 		{
 			Long sellerId = optSeller.get().getId();
-			String result = "";
 			if(optProduct.isPresent())
 			{
 				if(sellerId == optProduct.get().getSellerId())
@@ -369,11 +368,16 @@ public class SellerService {
 	@DeleteMapping("/seller/{id}")
 	@ApiOperation(value="Delete a seller based on seller id.",
 	notes="Requires an Admin role.")
-	ResponseEntity<String> deleteSellerById(@PathVariable("id") Long id) {
+	ResponseEntity<String> deleteSellerById(@RequestHeader("Authorization") String authorization, @PathVariable("id") Long id) {
 		log.info("DeleteSellerById method called");
 		Optional<Seller> savedSeller = sellerRepo.findById(id);
 		if (savedSeller.isPresent()) {
+			List<Product> sellersProducts = projectClient.getAllProductEntitiesById(id);
 			sellerRepo.delete(savedSeller.get());
+			for(Product product: sellersProducts)
+			{
+				removeProductAdmin(authorization, product.getId());
+			}
 			return ResponseEntity.status(HttpStatus.OK).body(savedSeller.get().toString() + " has been deleted");
 		} else {
 			return ResponseEntity.status(HttpStatus.NOT_FOUND)
@@ -384,10 +388,15 @@ public class SellerService {
 	@DeleteMapping("/seller/username/{name}")
 	@ApiOperation(value="Delete a seller based on username.",
 	notes="Requires an Admin or Seller role.")
-	ResponseEntity<String> deleteSellerByUsernameAndId(@PathVariable("name") String name) {
+	ResponseEntity<String> deleteSellerByUsernameAndId(@RequestHeader("Authorization") String authorization, @PathVariable("name") String name) {
 		log.info("DeleteSellerByUsernameAndId method called");
 		Optional<Seller> savedSeller = sellerRepo.findByName(name);
 		if (savedSeller.isPresent()) {
+			List<Product> sellersProducts = projectClient.getAllProductEntitiesById(savedSeller.get().getId());
+			for(Product product: sellersProducts)
+			{
+				removeProduct(authorization, savedSeller.get().getName(), product.getId());
+			}
 			sellerRepo.delete(savedSeller.get());
 			return ResponseEntity.status(HttpStatus.OK).body(savedSeller.get().toString() + " has been deleted");
 		} else {
